@@ -220,6 +220,8 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       request->send(404);
       return;
     }
+  // Reset file position to the beginning after reading the gz trailer for ETag,
+  // so the file can be served from the start.
   request->_tempFile.seek(0);
   } else if (_callback == nullptr) {
     // We don't have a Template processor
