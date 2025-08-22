@@ -211,8 +211,8 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   char etag[9];
   const char* tempFileName = request->_tempFile.name();
   const size_t lenFilename = strlen(tempFileName);
-  const size_t gz_len = sizeof(T__gz) - 1;
-  if (lenFilename > sizeof(T__gz) && memcmp(tempFileName + lenFilename - gz_len, T__gz, gz_len) == 0) {
+  
+  if (lenFilename > T__GZ_LEN && memcmp(tempFileName + lenFilename - T__GZ_LEN, T__gz, T__GZ_LEN) == 0) {
     //File is a gz, get etag from CRC in trailer
     if (!AsyncWebServerRequest::_getEtag(request->_tempFile, etag)) {
       // File is corrupted or invalid
@@ -220,6 +220,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       request->send(404);
       return;
     }
+
   // Reset file position to the beginning after reading the gz trailer for ETag,
   // so the file can be served from the start.
   request->_tempFile.seek(0);
@@ -230,12 +231,8 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     if (lastWrite > 0) {
       // Use timestamp-based ETag
       etagValue = static_cast<uint32_t>(lastWrite);
-    } 
-    // Use filesize-based ETag
-    size_t fileSize = request->_tempFile.size();
-    etagValue = static_cast<uint32_t>(fileSize);
     } else {
-      // Use filesize-based ETag
+      // No timestamp available, use filesize-based ETag
       size_t fileSize = request->_tempFile.size();
       etagValue = static_cast<uint32_t>(fileSize);
     }
