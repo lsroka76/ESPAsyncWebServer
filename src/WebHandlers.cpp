@@ -232,7 +232,11 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     // Use filesize-based ETag
     size_t fileSize = request->_tempFile.size();
     etagValue = static_cast<uint32_t>(fileSize);
-    
+    } else {
+      // Use filesize-based ETag
+      size_t fileSize = request->_tempFile.size();
+      etagValue = static_cast<uint32_t>(fileSize);
+    }
     snprintf(etag, sizeof(etag), "%08x", etagValue);
   } else {
     etag[0] = '\0';
