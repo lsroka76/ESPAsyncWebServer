@@ -190,9 +190,9 @@ bool AsyncStaticWebHandler::_searchFile(AsyncWebServerRequest *request, const St
 /**
  * @brief Handles an incoming HTTP request for a static file.
  *
- * This method processes a request for serving static files asynchronously.
- * It determines the correct ETag (entity tag) for caching, checks if the file
- * has been modified, and prepares the appropriate response (file response or 304 Not Modified).
+ * This method processes a request for serving static files asynchronously.  
+ * It determines the correct ETag (entity tag) for caching, checks if the file  
+ * has been modified, and prepares the appropriate response (file response or 304 Not Modified).  
  *
  * @param request Pointer to the incoming AsyncWebServerRequest object.
  */
@@ -207,11 +207,11 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     return;
   }
 
-  // Get server ETag. If file is not GZ and we have a Template Processor, ETag=0
+  // Get server ETag. If file is not GZ and we have a Template Processor, ETag=0 
   char etag[9];
-  const char *tempFileName = request->_tempFile.name();
+  const char* tempFileName = request->_tempFile.name();
   const size_t lenFilename = strlen(tempFileName);
-
+  
   if (lenFilename > T__GZ_LEN && memcmp(tempFileName + lenFilename - T__GZ_LEN, T__gz, T__GZ_LEN) == 0) {
     //File is a gz, get etag from CRC in trailer
     if (!AsyncWebServerRequest::_getEtag(request->_tempFile, etag)) {
@@ -221,9 +221,9 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       return;
     }
 
-    // Reset file position to the beginning after reading the gz trailer for ETag,
-    // so the file can be served from the start.
-    request->_tempFile.seek(0);
+  // Reset file position to the beginning after reading the gz trailer for ETag,
+  // so the file can be served from the start.
+  request->_tempFile.seek(0);
   } else if (_callback == nullptr) {
     // We don't have a Template processor
     uint32_t etagValue;
@@ -251,17 +251,23 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     response = new AsyncFileResponse(request->_tempFile, filename, emptyString, false, _callback);
 
     if (!response) {
-#ifdef ESP32
+  #ifdef ESP32
       log_e("Failed to allocate");
-#endif
+  #endif
       request->abort();
       return;
     }
     if (*etag != '\0') {
       response->addHeader(T_ETag, etag, true);
       response->addHeader(T_Cache_Control, T_no_cache, true);
-    } else if (_cache_control.length()) {
-      response->addHeader(T_Cache_Control, _cache_control.c_str(), false);
+    }
+    else {
+      if (_cache_control.length()) {
+        response->addHeader(T_Cache_Control, _cache_control.c_str(), false);
+      }
+      if (_last_modified.length()) {
+        response->addHeader(T_Last_Modified, _last_modified.c_str(), true);
+      }
     }
   }
   request->send(response);
