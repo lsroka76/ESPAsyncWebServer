@@ -200,7 +200,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   // Get the filename from request->_tempObject and free it
   String filename((char *)request->_tempObject);
   free(request->_tempObject);
-  request->_tempObject = NULL;
+  request->_tempObject = nullptr;
 
   if (request->_tempFile != true) {
     request->send(404);
@@ -221,8 +221,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       return;
     }
 
-  // Reset file position to the beginning after reading the gz trailer for ETag,
-  // so the file can be served from the start.
+  // Reset file position to the beginning so the file can be served from the start.
   request->_tempFile.seek(0);
   } else if (_callback == nullptr) {
     // We don't have a Template processor
@@ -243,33 +242,55 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
 
   AsyncWebServerResponse *response;
 
-  // Check if client already has the file (ETag match)
-  if (*etag != '\0' && request->header(T_INM).equals(etag)) {
+  // Get raw header pointers to avoid creating temporary String objects
+  const char* inm = request->header(T_INM).c_str();  // If-None-Match
+  const char* ims = request->header(T_IMS).c_str();  // If-Modified-Since
+
+  bool notModified = false;
+  // 1. If the client sent If-None-Match and we have an ETag → compare
+  if (*etag != '\0' && inm && *inm) {
+      if (strcmp(inm, etag) == 0) {
+          notModified = true;
+      }
+  }
+  // 2. Otherwise, if there is no ETag and no Template processor but we have Last-Modified and Last-Modified matches
+  else if (*etag == '\0' && _callback == nullptr && _last_modified.length() > 0 && ims && *ims && strcmp(ims, _last_modified.c_str()) == 0) {
+    log_d("_last_modified: %s", _last_modified.c_str());
+    log_d("ims: %s", ims);
+    notModified = true; 
+  }
+
+  if (notModified) {
     request->_tempFile.close();
     response = new AsyncBasicResponse(304);  // Not modified
   } else {
     response = new AsyncFileResponse(request->_tempFile, filename, emptyString, false, _callback);
-
     if (!response) {
-  #ifdef ESP32
-      log_e("Failed to allocate");
-  #endif
+      #ifdef ESP32
+              log_e("Failed to allocate");
+      #endif
       request->abort();
       return;
     }
+
+    // Set ETag header
     if (*etag != '\0') {
       response->addHeader(T_ETag, etag, true);
-      response->addHeader(T_Cache_Control, T_no_cache, true);
     }
-    else {
-      if (_cache_control.length()) {
-        response->addHeader(T_Cache_Control, _cache_control.c_str(), false);
-      }
-      if (_last_modified.length()) {
-        response->addHeader(T_Last_Modified, _last_modified.c_str(), true);
-      }
+    // Set Last-Modified header
+    if (_last_modified.length()) {
+      response->addHeader(T_Last_Modified, _last_modified.c_str(), true);
     }
   }
+
+  // Set cache control
+  if (_cache_control.length()) {
+    response->addHeader(T_Cache_Control, _cache_control.c_str(), false);
+  }
+  else {
+    response->addHeader(T_Cache_Control, T_no_cache, false);
+  }
+
   request->send(response);
 }
 
