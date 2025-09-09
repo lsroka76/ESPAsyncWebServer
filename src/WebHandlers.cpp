@@ -190,9 +190,9 @@ bool AsyncStaticWebHandler::_searchFile(AsyncWebServerRequest *request, const St
 /**
  * @brief Handles an incoming HTTP request for a static file.
  *
- * This method processes a request for serving static files asynchronously.  
- * It determines the correct ETag (entity tag) for caching, checks if the file  
- * has been modified, and prepares the appropriate response (file response or 304 Not Modified).  
+ * This method processes a request for serving static files asynchronously.
+ * It determines the correct ETag (entity tag) for caching, checks if the file
+ * has been modified, and prepares the appropriate response (file response or 304 Not Modified).
  *
  * @param request Pointer to the incoming AsyncWebServerRequest object.
  */
@@ -207,11 +207,11 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     return;
   }
 
-  // Get server ETag. If file is not GZ and we have a Template Processor, ETag=0 
+  // Get server ETag. If file is not GZ and we have a Template Processor, ETag=0
   char etag[9];
-  const char* tempFileName = request->_tempFile.name();
+  const char *tempFileName = request->_tempFile.name();
   const size_t lenFilename = strlen(tempFileName);
-  
+
   if (lenFilename > T__GZ_LEN && memcmp(tempFileName + lenFilename - T__GZ_LEN, T__gz, T__GZ_LEN) == 0) {
     //File is a gz, get etag from CRC in trailer
     if (!AsyncWebServerRequest::_getEtag(request->_tempFile, etag)) {
@@ -221,8 +221,8 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       return;
     }
 
-  // Reset file position to the beginning so the file can be served from the start.
-  request->_tempFile.seek(0);
+    // Reset file position to the beginning so the file can be served from the start.
+    request->_tempFile.seek(0);
   } else if (_callback == nullptr) {
     // We don't have a Template processor
     uint32_t etagValue;
@@ -243,21 +243,21 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   AsyncWebServerResponse *response;
 
   // Get raw header pointers to avoid creating temporary String objects
-  const char* inm = request->header(T_INM).c_str();  // If-None-Match
-  const char* ims = request->header(T_IMS).c_str();  // If-Modified-Since
+  const char *inm = request->header(T_INM).c_str();  // If-None-Match
+  const char *ims = request->header(T_IMS).c_str();  // If-Modified-Since
 
   bool notModified = false;
   // 1. If the client sent If-None-Match and we have an ETag → compare
   if (*etag != '\0' && inm && *inm) {
-      if (strcmp(inm, etag) == 0) {
-          notModified = true;
-      }
+    if (strcmp(inm, etag) == 0) {
+      notModified = true;
+    }
   }
   // 2. Otherwise, if there is no ETag and no Template processor but we have Last-Modified and Last-Modified matches
   else if (*etag == '\0' && _callback == nullptr && _last_modified.length() > 0 && ims && *ims && strcmp(ims, _last_modified.c_str()) == 0) {
     log_d("_last_modified: %s", _last_modified.c_str());
     log_d("ims: %s", ims);
-    notModified = true; 
+    notModified = true;
   }
 
   if (notModified) {
@@ -266,9 +266,9 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   } else {
     response = new AsyncFileResponse(request->_tempFile, filename, emptyString, false, _callback);
     if (!response) {
-      #ifdef ESP32
-              log_e("Failed to allocate");
-      #endif
+#ifdef ESP32
+      log_e("Failed to allocate");
+#endif
       request->abort();
       return;
     }
@@ -286,8 +286,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   // Set cache control
   if (_cache_control.length()) {
     response->addHeader(T_Cache_Control, _cache_control.c_str(), false);
-  }
-  else {
+  } else {
     response->addHeader(T_Cache_Control, T_no_cache, false);
   }
 
