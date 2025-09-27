@@ -248,9 +248,9 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       notModified = true;
   }
   // 2. Otherwise, if there is no ETag but we have Last-Modified and Last-Modified matches
-  else if (*etag == '\0' && _callback == nullptr && _last_modified.length() > 0 && request->header(T_IMS) == _last_modified) {
+  else if (*etag == '\0' && _last_modified.length() > 0 && request->header(T_IMS) == _last_modified) {
     log_d("_last_modified: %s", _last_modified.c_str());
-    notModified = true;
+    notModified = true; 
   }
 
   if (notModified) {
