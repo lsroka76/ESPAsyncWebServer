@@ -33,6 +33,17 @@ static const char *htmlContent PROGMEM = R"(
 
 static const size_t htmlContentLength = strlen_P(htmlContent);
 
+// Variables used for dynamic cachable template
+static unsigned uptimeInMinutes = 0;
+static AsyncStaticWebHandler* uptimeHandler = nullptr;
+
+// Utility function for performing that update
+static void setUptimeInMinutes(unsigned t) {
+    uptimeInMinutes = t;
+    // Update caching header with a new value as well
+    if (uptimeHandler) uptimeHandler->setLastModified(static_cast<time_t>(t * 60));
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -56,16 +67,30 @@ void setup() {
 
   // Serve the static template file
   //
+  // This call will have caching headers automatically added as it is a static file.
+  //
   // curl -v http://192.168.4.1/template.html
   server.serveStatic("/template.html", LittleFS, "/template.html");
 
-  // Serve the static template with a template processor
+  // Serve a template with dynamic content
   //
-  // ServeStatic static is used to serve static output which never changes over time.
-  // This special endpoints automatically adds caching headers.
-  // If a template processor is used, it must ensure that the outputted content will always be the same over time and never changes.
-  // Otherwise, do not use serveStatic.
-  // Example below: IP never changes.
+  // serveStatic recognizes that template processing is in use, and will not automatically
+  // add caching headers.
+  //
+  // curl -v http://192.168.4.1/dynamic.html  
+  server.serveStatic("/dynamic.html", LittleFS,  "/template.html").setTemplateProcessor([](const String &var) -> String {
+    if (var == "USER") {
+      return String("Bob ") + millis();
+    }
+    return emptyString;
+  });
+
+  // Serve a static template with a template processor
+  //
+  // By explicitly calling setLastModified() on the handler object, we enable
+  // sending the caching headers, even when a template is in use.
+  // This pattern should never be used with template data that can change.
+  // Example below: USER never changes.
   //
   // curl -v http://192.168.4.1/index.html
   server.serveStatic("/index.html", LittleFS, "/template.html").setTemplateProcessor([](const String &var) -> String {
@@ -73,18 +98,35 @@ void setup() {
       return "Bob";
     }
     return emptyString;
+  }).setLastModified("2025-01-01T01:02:03Z"); // Here I am using ISO 8601 timestamp format; this is not required
+
+  // Serve a template with dynamic content *and* caching
+  //
+  // The data used in this template is updated in loop().  loop() is then responsible
+  // for calling setLastModified() on the handler object to notify any caches that
+  // the data has changed.
+  //
+  // curl -v http://192.168.4.1/uptime.html
+  uptimeHandler = &server.serveStatic("/uptime.html", LittleFS, "/template.html").setTemplateProcessor([](const String &var) -> String {
+    if (var == "USER") {
+      return String("Bob ") + uptimeInMinutes + " minutes";
+    }
+    return emptyString;
   });
 
-  // Serve a template with dynamic content
+  // Serve a template with dynamic content based on user request
   //
-  // to serve a template with dynamic content (output changes over time), use normal
-  // Example below: content changes over tinme do not use serveStatic.
+  // In this case, the template is served via a callback request.  Data from the request
+  // is used to generate the template callback.
   //
-  // curl -v http://192.168.4.1/dynamic.html
-  server.on("/dynamic.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/template.html", "text/html", false, [](const String &var) -> String {
+  // curl -v -G -d "USER=Bob" http://192.168.4.1/user_request.html
+  server.on("/user_request.html", HTTP_GET, [](AsyncWebServerRequest *request) {      
+    request->send(LittleFS, "/template.html", "text/html", false, [=](const String &var) -> String {
       if (var == "USER") {
-        return String("Bob ") + millis();
+        const AsyncWebParameter* param = request->getParam("USER");
+        if (param) {
+          return param->value();
+        }
       }
       return emptyString;
     });
@@ -94,6 +136,13 @@ void setup() {
 }
 
 // not needed
-void loop() {
+void loop() {  
   delay(100);
+
+  // Compute uptime
+  unsigned currentUptimeInMinutes = millis() / (60 * 1000);
+  
+  if (currentUptimeInMinutes != uptimeInMinutes) {
+    setUptimeInMinutes(currentUptimeInMinutes);
+  }  
 }
