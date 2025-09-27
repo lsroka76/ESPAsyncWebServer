@@ -242,21 +242,14 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
 
   AsyncWebServerResponse *response;
 
-  // Get raw header pointers to avoid creating temporary String objects
-  const char *inm = request->header(T_INM).c_str();  // If-None-Match
-  const char *ims = request->header(T_IMS).c_str();  // If-Modified-Since
-
   bool notModified = false;
   // 1. If the client sent If-None-Match and we have an ETag → compare
-  if (*etag != '\0' && inm && *inm) {
-    if (strcmp(inm, etag) == 0) {
+  if (*etag != '\0' && request->header(T_INM) == etag) {
       notModified = true;
-    }
   }
-  // 2. Otherwise, if there is no ETag and no Template processor but we have Last-Modified and Last-Modified matches
-  else if (*etag == '\0' && _callback == nullptr && _last_modified.length() > 0 && ims && *ims && strcmp(ims, _last_modified.c_str()) == 0) {
+  // 2. Otherwise, if there is no ETag but we have Last-Modified and Last-Modified matches
+  else if (*etag == '\0' && _callback == nullptr && _last_modified.length() > 0 && request->header(T_IMS) == _last_modified) {
     log_d("_last_modified: %s", _last_modified.c_str());
-    log_d("ims: %s", ims);
     notModified = true;
   }
 
