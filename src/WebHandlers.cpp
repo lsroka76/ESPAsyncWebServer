@@ -257,12 +257,15 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     response = new AsyncBasicResponse(304);  // Not modified
   } else {
     response = new AsyncFileResponse(request->_tempFile, filename, emptyString, false, _callback);
-    if (!response) {
-      async_ws_log_e("Failed to allocate");
-      request->abort();
-      return;
-    }
+  }
 
+  if (!response) {
+    async_ws_log_e("Failed to allocate");
+    request->abort();
+    return;
+  }
+
+  if (!notModified) {
     // Set ETag header
     if (*etag != '\0') {
       response->addHeader(T_ETag, etag, true);
