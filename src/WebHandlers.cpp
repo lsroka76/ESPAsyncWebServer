@@ -3,6 +3,7 @@
 
 #include "ESPAsyncWebServer.h"
 #include "WebHandlerImpl.h"
+#include "AsyncWebServerLogging.h"
 
 using namespace asyncsrv;
 
@@ -173,9 +174,7 @@ bool AsyncStaticWebHandler::_searchFile(AsyncWebServerRequest *request, const St
     size_t pathLen = path.length();
     char *_tempPath = (char *)malloc(pathLen + 1);
     if (_tempPath == NULL) {
-#ifdef ESP32
-      log_e("Failed to allocate");
-#endif
+      async_ws_log_e("Failed to allocate");
       request->abort();
       request->_tempFile.close();
       return false;
@@ -216,7 +215,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     //File is a gz, get etag from CRC in trailer
     if (!AsyncWebServerRequest::_getEtag(request->_tempFile, etag)) {
       // File is corrupted or invalid
-      log_e("File is corrupted or invalid: %s", tempFileName);
+      async_ws_log_e("File is corrupted or invalid: %s", tempFileName);
       request->send(404);
       return;
     }
@@ -249,7 +248,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   }
   // 2. Otherwise, if there is no ETag but we have Last-Modified and Last-Modified matches
   else if (*etag == '\0' && _last_modified.length() > 0 && request->header(T_IMS) == _last_modified) {
-    log_d("_last_modified: %s", _last_modified.c_str());
+    async_ws_log_d("_last_modified: %s", _last_modified.c_str());
     notModified = true; 
   }
 
@@ -259,9 +258,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   } else {
     response = new AsyncFileResponse(request->_tempFile, filename, emptyString, false, _callback);
     if (!response) {
-#ifdef ESP32
-      log_e("Failed to allocate");
-#endif
+      async_ws_log_e("Failed to allocate");
       request->abort();
       return;
     }

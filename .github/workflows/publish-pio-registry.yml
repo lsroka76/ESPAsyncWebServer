@@ -38,13 +38,13 @@ jobs:
           echo "Downloading tag: $TAG_NAME"
           curl -L -o project.zip "https://github.com/${{ github.repository }}/archive/refs/tags/$TAG_NAME.zip"
 
-      - name: Cache PlatformIO
-        uses: actions/cache@v4
-        with:
-          key: ${{ runner.os }}-pio
-          path: |
-            ~/.cache/pip
-            ~/.platformio
+      # - name: Cache PlatformIO
+      #   uses: actions/cache@v4
+      #   with:
+      #     key: ${{ runner.os }}-pio
+      #     path: |
+      #       ~/.cache/pip
+      #       ~/.platformio
 
       - name: Python
         uses: actions/setup-python@v6
