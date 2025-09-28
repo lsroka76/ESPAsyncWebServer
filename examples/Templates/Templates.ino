@@ -33,7 +33,7 @@ static const char *htmlContent PROGMEM = R"(
 
 static const size_t htmlContentLength = strlen_P(htmlContent);
 
-// Variables used for dynamic cachable template
+// Variables used for dynamic cacheable template
 static unsigned uptimeInMinutes = 0;
 static AsyncStaticWebHandler *uptimeHandler = nullptr;
 
@@ -102,7 +102,7 @@ void setup() {
       }
       return emptyString;
     })
-    .setLastModified("2025-01-01T01:02:03Z");  // Here I am using ISO 8601 timestamp format; this is not required
+    .setLastModified("Sun, 28 Sep 2025 01:02:03 GMT");
 
   // Serve a template with dynamic content *and* caching
   //
