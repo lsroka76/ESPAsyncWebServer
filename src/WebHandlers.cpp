@@ -244,12 +244,12 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   bool notModified = false;
   // 1. If the client sent If-None-Match and we have an ETag → compare
   if (*etag != '\0' && request->header(T_INM) == etag) {
-      notModified = true;
+    notModified = true;
   }
   // 2. Otherwise, if there is no ETag but we have Last-Modified and Last-Modified matches
   else if (*etag == '\0' && _last_modified.length() > 0 && request->header(T_IMS) == _last_modified) {
     async_ws_log_d("_last_modified: %s", _last_modified.c_str());
-    notModified = true; 
+    notModified = true;
   }
 
   if (notModified) {

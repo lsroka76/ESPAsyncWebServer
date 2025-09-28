@@ -35,13 +35,15 @@ static const size_t htmlContentLength = strlen_P(htmlContent);
 
 // Variables used for dynamic cachable template
 static unsigned uptimeInMinutes = 0;
-static AsyncStaticWebHandler* uptimeHandler = nullptr;
+static AsyncStaticWebHandler *uptimeHandler = nullptr;
 
 // Utility function for performing that update
 static void setUptimeInMinutes(unsigned t) {
-    uptimeInMinutes = t;
-    // Update caching header with a new value as well
-    if (uptimeHandler) uptimeHandler->setLastModified(static_cast<time_t>(t * 60));
+  uptimeInMinutes = t;
+  // Update caching header with a new value as well
+  if (uptimeHandler) {
+    uptimeHandler->setLastModified(static_cast<time_t>(t * 60));
+  }
 }
 
 void setup() {
@@ -77,8 +79,8 @@ void setup() {
   // serveStatic recognizes that template processing is in use, and will not automatically
   // add caching headers.
   //
-  // curl -v http://192.168.4.1/dynamic.html  
-  server.serveStatic("/dynamic.html", LittleFS,  "/template.html").setTemplateProcessor([](const String &var) -> String {
+  // curl -v http://192.168.4.1/dynamic.html
+  server.serveStatic("/dynamic.html", LittleFS, "/template.html").setTemplateProcessor([](const String &var) -> String {
     if (var == "USER") {
       return String("Bob ") + millis();
     }
@@ -93,12 +95,14 @@ void setup() {
   // Example below: USER never changes.
   //
   // curl -v http://192.168.4.1/index.html
-  server.serveStatic("/index.html", LittleFS, "/template.html").setTemplateProcessor([](const String &var) -> String {
-    if (var == "USER") {
-      return "Bob";
-    }
-    return emptyString;
-  }).setLastModified("2025-01-01T01:02:03Z"); // Here I am using ISO 8601 timestamp format; this is not required
+  server.serveStatic("/index.html", LittleFS, "/template.html")
+    .setTemplateProcessor([](const String &var) -> String {
+      if (var == "USER") {
+        return "Bob";
+      }
+      return emptyString;
+    })
+    .setLastModified("2025-01-01T01:02:03Z");  // Here I am using ISO 8601 timestamp format; this is not required
 
   // Serve a template with dynamic content *and* caching
   //
@@ -120,10 +124,10 @@ void setup() {
   // is used to generate the template callback.
   //
   // curl -v -G -d "USER=Bob" http://192.168.4.1/user_request.html
-  server.on("/user_request.html", HTTP_GET, [](AsyncWebServerRequest *request) {      
+  server.on("/user_request.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/template.html", "text/html", false, [=](const String &var) -> String {
       if (var == "USER") {
-        const AsyncWebParameter* param = request->getParam("USER");
+        const AsyncWebParameter *param = request->getParam("USER");
         if (param) {
           return param->value();
         }
@@ -136,13 +140,13 @@ void setup() {
 }
 
 // not needed
-void loop() {  
+void loop() {
   delay(100);
 
   // Compute uptime
   unsigned currentUptimeInMinutes = millis() / (60 * 1000);
-  
+
   if (currentUptimeInMinutes != uptimeInMinutes) {
     setUptimeInMinutes(currentUptimeInMinutes);
-  }  
+  }
 }
