@@ -40,9 +40,10 @@
 
 // See https://github.com/ESP32Async/ESPAsyncWebServer/commit/3d3456e9e81502a477f6498c44d0691499dda8f9#diff-646b25b11691c11dce25529e3abce843f0ba4bd07ab75ec9eee7e72b06dbf13fR388-R392
 // This setting slowdown chunk serving but avoids crashing or deadlocks in the case where slow chunk responses are created, like file serving form SD Card
-#ifndef ASYNCWEBSERVER_USE_CHUNK_INFLIGHT
-#define ASYNCWEBSERVER_USE_CHUNK_INFLIGHT 1
-#endif
+//#ifndef ASYNCWEBSERVER_USE_CHUNK_INFLIGHT
+//#define ASYNCWEBSERVER_USE_CHUNK_INFLIGHT 1
+//#endif
+#undef ASYNCWEBSERVER_USE_CHUNK_INFLIGHT
 
 class AsyncWebServer;
 class AsyncWebServerRequest;
