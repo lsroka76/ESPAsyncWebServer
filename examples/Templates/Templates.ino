@@ -42,7 +42,7 @@ static void setUptimeInMinutes(unsigned t) {
   uptimeInMinutes = t;
   // Update caching header with a new value as well
   if (uptimeHandler) {
-    uptimeHandler->setLastModified(static_cast<time_t>(t * 60));
+    uptimeHandler->setLastModified();
   }
 }
 
