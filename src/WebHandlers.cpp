@@ -206,7 +206,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     return;
   }
 
-  // Get server ETag. If file is not GZ and we have a Template Processor, ETag=0
+  // Get server ETag. If file is not GZ and we have a Template Processor, ETag is set to an empty string
   char etag[9];
   const char *tempFileName = request->_tempFile.name();
   const size_t lenFilename = strlen(tempFileName);
