@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
-// Copyright 2016-2025 Hristo Gochkov, Mathieu Carbou, Emil Muratov
+// Copyright 2016-2026 Hristo Gochkov, Mathieu Carbou, Emil Muratov, Will Miles
 
 #pragma once
 
 #include <ESPAsyncWebServer.h>
 #include "ChunkPrint.h"
+
+#include <utility>
 
 #if ASYNC_JSON_SUPPORT == 1
 
@@ -88,7 +90,7 @@ public:
 
 class AsyncCallbackJsonWebHandler : public AsyncWebHandler {
 protected:
-  String _uri;
+  AsyncURIMatcher _uri;
   WebRequestMethodComposite _method;
   ArJsonRequestHandlerFunction _onRequest;
 #if ARDUINOJSON_VERSION_MAJOR == 6
@@ -98,13 +100,13 @@ protected:
 
 public:
 #if ARDUINOJSON_VERSION_MAJOR == 6
-  AsyncCallbackJsonWebHandler(const String &uri, ArJsonRequestHandlerFunction onRequest = nullptr, size_t maxJsonBufferSize = DYNAMIC_JSON_DOCUMENT_SIZE);
+  AsyncCallbackJsonWebHandler(AsyncURIMatcher uri, ArJsonRequestHandlerFunction onRequest = nullptr, size_t maxJsonBufferSize = DYNAMIC_JSON_DOCUMENT_SIZE);
 #else
-  AsyncCallbackJsonWebHandler(const String &uri, ArJsonRequestHandlerFunction onRequest = nullptr);
+  AsyncCallbackJsonWebHandler(AsyncURIMatcher uri, ArJsonRequestHandlerFunction onRequest = nullptr);
 #endif
 
   void setMethod(WebRequestMethodComposite method) {
-    _method = method;
+    _method = std::move(method);
   }
   void setMaxContentLength(int maxContentLength) {
     _maxContentLength = maxContentLength;
@@ -113,14 +115,14 @@ public:
     _onRequest = fn;
   }
 
-  bool canHandle(AsyncWebServerRequest *request) const override final;
-  void handleRequest(AsyncWebServerRequest *request) override final;
+  bool canHandle(AsyncWebServerRequest *request) const final;
+  void handleRequest(AsyncWebServerRequest *request) final;
   void handleUpload(
-    __unused AsyncWebServerRequest *request, __unused const String &filename, __unused size_t index, __unused uint8_t *data, __unused size_t len,
-    __unused bool final
-  ) override final {}
-  void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) override final;
-  bool isRequestHandlerTrivial() const override final {
+    __asyncws_unused AsyncWebServerRequest *request, __asyncws_unused const String &filename, __asyncws_unused size_t index, __asyncws_unused uint8_t *data,
+    __asyncws_unused size_t len, __asyncws_unused bool final
+  ) final {}
+  void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) final;
+  bool isRequestHandlerTrivial() const final {
     return !_onRequest;
   }
 };

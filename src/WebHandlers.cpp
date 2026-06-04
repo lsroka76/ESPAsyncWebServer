@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
-// Copyright 2016-2025 Hristo Gochkov, Mathieu Carbou, Emil Muratov
+// Copyright 2016-2026 Hristo Gochkov, Mathieu Carbou, Emil Muratov, Will Miles
 
 #include "ESPAsyncWebServer.h"
 #include "WebHandlerImpl.h"
 #include "AsyncWebServerLogging.h"
+
+#include <cstdio>
+#include <utility>
 
 using namespace asyncsrv;
 
@@ -76,7 +79,7 @@ AsyncStaticWebHandler &AsyncStaticWebHandler::setLastModified(struct tm *last_mo
   char result[30];
 #ifdef ESP8266
   auto formatP = PSTR("%a, %d %b %Y %H:%M:%S GMT");
-  char format[strlen_P(formatP) + 1];
+  char format[strlen_P(formatP) + 1];  // NOLINT(runtime/arrays)
   strcpy_P(format, formatP);
 #else
   static constexpr const char *format = "%a, %d %b %Y %H:%M:%S GMT";
@@ -100,7 +103,7 @@ AsyncStaticWebHandler &AsyncStaticWebHandler::setLastModified() {
 }
 
 bool AsyncStaticWebHandler::canHandle(AsyncWebServerRequest *request) const {
-  return request->isHTTP() && request->method() == HTTP_GET && request->url().startsWith(_uri) && _getFile(request);
+  return request->isHTTP() && request->method() == AsyncWebRequestMethod::HTTP_GET && request->url().startsWith(_uri) && _getFile(request);
 }
 
 bool AsyncStaticWebHandler::_getFile(AsyncWebServerRequest *request) const {
@@ -207,7 +210,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
   }
 
   // Get server ETag. If file is not GZ and we have a Template Processor, ETag is set to an empty string
-  char etag[9];
+  char etag[11];
   const char *tempFileName = request->_tempFile.name();
   const size_t lenFilename = strlen(tempFileName);
 
@@ -215,7 +218,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     //File is a gz, get etag from CRC in trailer
     if (!AsyncWebServerRequest::_getEtag(request->_tempFile, etag)) {
       // File is corrupted or invalid
-      async_ws_log_e("File is corrupted or invalid: %s", tempFileName);
+      async_ws_log_w("File is corrupted or invalid: %s", tempFileName);
       request->send(404);
       return;
     }
@@ -234,11 +237,8 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
       size_t fileSize = request->_tempFile.size();
       etagValue = static_cast<uint32_t>(fileSize);
     }
-#ifndef ESP8266
-    snprintf(etag, sizeof(etag), "%08lx", etagValue);
-#else
-    snprintf(etag, sizeof(etag), "%08x", etagValue);
-#endif
+    // RFC9110 Section-8.8.3: Value of the ETag response must be enclosed in double quotes
+    snprintf(etag, sizeof(etag), "\"%08" PRIx32 "\"", etagValue);
   } else {
     etag[0] = '\0';
   }
@@ -260,7 +260,7 @@ void AsyncStaticWebHandler::handleRequest(AsyncWebServerRequest *request) {
     request->_tempFile.close();
     response = new AsyncBasicResponse(304);  // Not modified
   } else {
-    response = new AsyncFileResponse(request->_tempFile, filename, emptyString, false, _callback);
+    response = new AsyncFileResponse(request->_tempFile, filename, asyncsrv::emptyString, false, _callback);
   }
 
   if (!response) {
@@ -295,47 +295,15 @@ AsyncStaticWebHandler &AsyncStaticWebHandler::setTemplateProcessor(AwsTemplatePr
   return *this;
 }
 
-void AsyncCallbackWebHandler::setUri(const String &uri) {
-  _uri = uri;
-  _isRegex = uri.startsWith("^") && uri.endsWith("$");
+void AsyncCallbackWebHandler::setUri(AsyncURIMatcher uri) {
+  _uri = std::move(uri);
 }
 
 bool AsyncCallbackWebHandler::canHandle(AsyncWebServerRequest *request) const {
-  if (!_onRequest || !request->isHTTP() || !(_method & request->method())) {
+  if (!_onRequest || !request->isHTTP() || !_method.matches(request->method())) {
     return false;
   }
-
-#ifdef ASYNCWEBSERVER_REGEX
-  if (_isRegex) {
-    std::regex pattern(_uri.c_str());
-    std::smatch matches;
-    std::string s(request->url().c_str());
-    if (std::regex_search(s, matches, pattern)) {
-      for (size_t i = 1; i < matches.size(); ++i) {  // start from 1
-        request->_addPathParam(matches[i].str().c_str());
-      }
-    } else {
-      return false;
-    }
-  } else
-#endif
-    if (_uri.length() && _uri.startsWith("/*.")) {
-    String uriTemplate = String(_uri);
-    uriTemplate = uriTemplate.substring(uriTemplate.lastIndexOf("."));
-    if (!request->url().endsWith(uriTemplate)) {
-      return false;
-    }
-  } else if (_uri.length() && _uri.endsWith("*")) {
-    String uriTemplate = String(_uri);
-    uriTemplate = uriTemplate.substring(0, uriTemplate.length() - 1);
-    if (!request->url().startsWith(uriTemplate)) {
-      return false;
-    }
-  } else if (_uri.length() && (_uri != request->url() && !request->url().startsWith(_uri + "/"))) {
-    return false;
-  }
-
-  return true;
+  return _uri.matches(request);
 }
 
 void AsyncCallbackWebHandler::handleRequest(AsyncWebServerRequest *request) {
